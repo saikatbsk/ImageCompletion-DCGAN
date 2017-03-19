@@ -62,14 +62,14 @@ def main(_):
                 duration = time.time() - start_time
                 print('step: %d, loss: (G: %.8f, D: %.8f), time taken: %.3f' % (itr, g_loss, d_loss, duration))
 
-                if not os.path.exists(FLAGS.images_dir):
-                    os.makedirs(FLAGS.images_dir)
-
-                filename = os.path.join(FLAGS.images_dir, '%05d.jpg' % itr)
-                with open(filename, 'wb') as f:
-                    f.write(sess.run(images))
-
                 if itr % 100 == 0:
+                    if not os.path.exists(FLAGS.images_dir):
+                        os.makedirs(FLAGS.images_dir)
+
+                    filename = os.path.join(FLAGS.images_dir, '%05d.jpg' % itr)
+                    with open(filename, 'wb') as f:
+                        f.write(sess.run(images))
+
                     if not os.path.exists(FLAGS.log_dir):
                         os.makedirs(FLAGS.log_dir)
 
