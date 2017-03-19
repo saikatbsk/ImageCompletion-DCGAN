@@ -81,7 +81,7 @@ def main(_):
             if not os.path.exists(FLAGS.images_dir):
                 os.makedirs(FLAGS.images_dir)
 
-            filename = os.path.join(FLAGS.images_dir, 'generated_image.jpg')
+            filename = os.path.join(FLAGS.images_dir, 'generated-image.jpg')
             with open(filename, 'wb') as f:
                 print('write to %s' % filename)
                 f.write(generated)
