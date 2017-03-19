@@ -3,7 +3,7 @@ Dataset of old face images: https://drive.google.com/open?id=0B_uiWs-gNj4wbmF4em
 ##### Install requirements:
 
 ```
-sudo pip install numpy scipy tensorflow glob
+sudo pip3 install numpy scipy tensorflow glob
 ```
 
 ##### Run:
