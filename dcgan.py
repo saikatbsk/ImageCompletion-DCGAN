@@ -6,7 +6,7 @@ The original DCGAN paper can be found at: https://arxiv.org/pdf/1511.06434.pdf
 import tensorflow as tf
 
 class Generator:
-    def __init__(self, depths=[1024, 512, 256, 128], f_size=4):
+    def __init__(self, depths, f_size):
         self.reuse  = False
         self.f_size = f_size
         self.depths = depths + [3]
@@ -90,7 +90,7 @@ class Generator:
         return self.model(inputs)
 
 class Discriminator:
-    def __init__(self, depths=[64, 128, 256, 512]):
+    def __init__(self, depths):
         self.reuse = False
         self.depths = [3] + depths
 
@@ -151,9 +151,9 @@ class Discriminator:
         return self.model(inputs)
 
 class DCGAN:
-    def __init__(self, batch_size=128, f_size=4, z_dim=100,
-        gdepth1=1024, gdepth2=512, gdepth3=256, gdepth4=128,
-        ddepth1=64,   ddepth2=128, ddepth3=256, ddepth4=512):
+    def __init__(self, batch_size, f_size, z_dim,
+        gdepth1, gdepth2, gdepth3, gdepth4,
+        ddepth1,   ddepth2, ddepth3, ddepth4):
         self.batch_size = batch_size
         self.f_size     = f_size
         self.z_dim      = z_dim
