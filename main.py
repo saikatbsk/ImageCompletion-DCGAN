@@ -25,8 +25,6 @@ def main(_):
         input_height=128, input_width=128,
         resize_height=96, resize_width=96,
         is_grayscale=FLAGS.is_grayscale)
-    print('Images loaded from: ', FLAGS.data_dir)
-    print('Input shape: ', input_images.shape)
 
     train_op = dcgan.build(input_images, feature_matching=True)
 
