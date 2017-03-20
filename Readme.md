@@ -20,7 +20,7 @@ A dataset of face (old) images can be downloaded from this google drive link: ht
 #### Requirements:
 
 ```
-sudo pip3 install numpy scipy tensorflow glob
+sudo pip3 install numpy scipy tensorflow
 ```
 
 #### Train:
