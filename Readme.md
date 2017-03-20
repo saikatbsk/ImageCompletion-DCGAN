@@ -38,5 +38,5 @@ python3 main.py --nois_train --latest_ckpt <checkpoint_index>
 example,
 
 ```
-python3 main.py --nois_train --latest_ckpt 1800
+python3 main.py --nois_train --latest_ckpt 2000
 ```
