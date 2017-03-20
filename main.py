@@ -84,7 +84,7 @@ def main(_):
                     g_saver.save(sess, g_checkpoint_path, global_step=itr)
                     d_saver.save(sess, d_checkpoint_path, global_step=itr)
         else:
-            generated = sess.run(dcgan.sample_images(1, 1))
+            generated = sess.run(dcgan.sample_images(5, 5))
 
             if not os.path.exists(FLAGS.images_dir):
                 os.makedirs(FLAGS.images_dir)
