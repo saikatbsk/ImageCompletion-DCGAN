@@ -15,7 +15,7 @@ tf.app.flags.DEFINE_integer('num_examples_per_epoch_for_train', 300, """number o
 
 CROP_IMAGE_SIZE = 96
 
-def read_decode(batch_size, f_size):
+def read_decode(batch_size, s_size):
     files = [os.path.join(FLAGS.data_dir, f) for f in os.listdir(FLAGS.data_dir) if f.endswith('.tfrecords')]
     fqueue = tf.train.string_input_producer(files)
     reader = tf.TFRecordReader()
@@ -40,29 +40,35 @@ def read_decode(batch_size, f_size):
         capacity=min_queue_examples + 3 * batch_size,
         min_after_dequeue=min_queue_examples)
     tf.summary.image('images', images)
-    return tf.subtract(tf.div(tf.image.resize_images(images, [f_size * 2 ** 4, f_size * 2 ** 4]), 127.5), 1.0)
+    return tf.subtract(tf.div(tf.image.resize_images(images, [s_size * 2 ** 4, s_size * 2 ** 4]), 127.5), 1.0)
 
 def main(_):
-    dcgan = DCGAN(batch_size=128, f_size=6, z_dim=40,
-        gdepth1=216, gdepth2=144, gdepth3=96,  gdepth4=64,
-        ddepth1=64,  ddepth2=96,  ddepth3=144, ddepth4=216)
+    dcgan = DCGAN(s_size=6)
+    traindata = read_decode(dcgan.batch_size, dcgan.s_size)
+    losses = dcgan.loss(traindata)
 
-    input_images = read_decode(dcgan.batch_size, dcgan.f_size)
+    # feature matching
+    graph = tf.get_default_graph()
+    features_g = tf.reduce_mean(graph.get_tensor_by_name('dg/d/conv4/outputs:0'), 0)
+    features_t = tf.reduce_mean(graph.get_tensor_by_name('dt/d/conv4/outputs:0'), 0)
+    losses[dcgan.g] += tf.multiply(tf.nn.l2_loss(features_g - features_t), 0.05)
 
-    train_op = dcgan.build(input_images, feature_matching=True)
+    tf.summary.scalar('g loss', losses[dcgan.g])
+    tf.summary.scalar('d loss', losses[dcgan.d])
+    train_op = dcgan.train(losses, learning_rate=0.0001)
+    summary_op = tf.summary.merge_all()
 
-    g_saver = tf.train.Saver(dcgan.g.variables)
-    d_saver = tf.train.Saver(dcgan.d.variables)
+    g_saver = tf.train.Saver(dcgan.g.variables, max_to_keep=15)
+    d_saver = tf.train.Saver(dcgan.d.variables, max_to_keep=15)
     g_checkpoint_path = os.path.join(FLAGS.log_dir, 'g.ckpt')
     d_checkpoint_path = os.path.join(FLAGS.log_dir, 'd.ckpt')
-    g_checkpoint_restore_path = os.path.join(
-        FLAGS.log_dir, 'g.ckpt-'+str(FLAGS.latest_ckpt))
-    d_checkpoint_restore_path = os.path.join(
-        FLAGS.log_dir, 'd.ckpt-'+str(FLAGS.latest_ckpt))
+    g_checkpoint_restore_path = os.path.join(FLAGS.log_dir, 'g.ckpt-'+str(FLAGS.latest_ckpt))
+    d_checkpoint_restore_path = os.path.join(FLAGS.log_dir, 'd.ckpt-'+str(FLAGS.latest_ckpt))
 
     with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+        summary_writer = tf.summary.FileWriter(FLAGS.log_dir, graph=sess.graph)
 
+        sess.run(tf.global_variables_initializer())
         # restore or initialize generator
         if os.path.exists(g_checkpoint_restore_path+'.meta'):
             print('Restoring variables:')
@@ -78,23 +84,23 @@ def main(_):
                     print(' ' + v.name)
                 d_saver.restore(sess, d_checkpoint_restore_path)
 
-            sample_z = sess.run(tf.random_uniform(
-                [dcgan.batch_size, dcgan.z_dim], minval=-1.0, maxval=1.0))
+            # setup for monitoring
+            sample_z = sess.run(tf.random_uniform([dcgan.batch_size, dcgan.z_dim], minval=-1.0, maxval=1.0))
             images = dcgan.sample_images(5, 5, inputs=sample_z)
 
             tf.train.start_queue_runners(sess=sess)
+
             for itr in range(FLAGS.latest_ckpt+1, FLAGS.max_itr):
                 start_time = time.time()
-                _, g_loss, d_loss = sess.run(
-                    [train_op, dcgan.losses['g'], dcgan.losses['d']])
+                _, g_loss, d_loss = sess.run([train_op, losses[dcgan.g], losses[dcgan.d]])
                 duration = time.time() - start_time
-                print('step: %d, loss: (G: %.8f, D: %.8f), time taken: %.3f' % \
-                    (itr, g_loss, d_loss, duration))
+                print('step: %d, loss: (G: %.8f, D: %.8f), time taken: %.3f' % (itr, g_loss, d_loss, duration))
 
                 if itr % 100 == 0:
                     if not os.path.exists(FLAGS.images_dir):
                         os.makedirs(FLAGS.images_dir)
 
+                    # Images generated
                     filename = os.path.join(FLAGS.images_dir, '%05d.jpg' % itr)
                     with open(filename, 'wb') as f:
                         f.write(sess.run(images))
@@ -102,6 +108,11 @@ def main(_):
                     if not os.path.exists(FLAGS.log_dir):
                         os.makedirs(FLAGS.log_dir)
 
+                    # Summary
+                    summary_str = sess.run(summary_op)
+                    summary_writer.add_summary(summary_str, itr)
+
+                    # Checkpoints
                     g_saver.save(sess, g_checkpoint_path, global_step=itr)
                     d_saver.save(sess, d_checkpoint_path, global_step=itr)
         else:
