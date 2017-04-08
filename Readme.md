@@ -8,3 +8,14 @@ Adversarial training, first proposed by Ian Goodfellow in his [NIPS-2014 paper](
 - https://github.com/Newmu/dcgan_code: Theano DCGAN implementation released by the authors of the DCGAN paper.
 - https://github.com/carpedm20/DCGAN-tensorflow: Unofficial TensorFlow DCGAN implementation.
 - https://github.com/openai/improved-gan: Code behind OpenAI’s first paper.
+
+*Setup and run:*
+
+```
+pip3 install --user tensorflow
+
+git clone https://github.com/saikatbsk/TensorFlow-DCGAN
+cd TensorFlow-DCGAN
+
+python3 main.py
+```
