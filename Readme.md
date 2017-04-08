@@ -19,3 +19,16 @@ cd TensorFlow-DCGAN
 
 python3 main.py
 ```
+
+*Run on floydhub:*
+
+```
+pip3 install --user floyd-cli
+~/.local/bin/floyd login
+
+git clone https://github.com/saikatbsk/TensorFlow-DCGAN
+cd TensorFlow-DCGAN
+
+~/.local/bin/floyd init TensorFlow-DCGAN
+~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output
+```
