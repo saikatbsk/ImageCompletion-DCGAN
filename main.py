@@ -1,7 +1,6 @@
 import os
 import time
 import tensorflow as tf
-from utils import *
 from dcgan import DCGAN
 
 FLAGS = tf.app.flags.FLAGS
