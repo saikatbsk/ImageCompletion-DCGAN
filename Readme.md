@@ -30,5 +30,5 @@ git clone https://github.com/saikatbsk/TensorFlow-DCGAN
 cd TensorFlow-DCGAN
 
 ~/.local/bin/floyd init TensorFlow-DCGAN
-~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output
+~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output"
 ```
