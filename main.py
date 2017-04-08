@@ -44,7 +44,7 @@ def read_decode(batch_size, f_size):
     return tf.subtract(tf.div(tf.image.resize_images(images, [f_size * 2 ** 4, f_size * 2 ** 4]), 127.5), 1.0)
 
 def main(_):
-    dcgan = DCGAN(batch_size=4, f_size=6, z_dim=40,
+    dcgan = DCGAN(batch_size=128, f_size=6, z_dim=40,
         gdepth1=216, gdepth2=144, gdepth3=96,  gdepth4=64,
         ddepth1=64,  ddepth2=96,  ddepth3=144, ddepth4=216)
 
