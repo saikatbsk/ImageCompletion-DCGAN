@@ -7,7 +7,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('log_dir',       'checkpoints',           """Path to write logs and checkpoints""")
 tf.app.flags.DEFINE_string('images_dir',    'images',                """Path to save generated images""")
 tf.app.flags.DEFINE_string('data_dir',      'data',                  """Path to data directory""")
-tf.app.flags.DEFINE_integer('max_itr',      10000,                   """Maximum number of iterations""")
+tf.app.flags.DEFINE_integer('max_itr',      100001,                  """Maximum number of iterations""")
 tf.app.flags.DEFINE_integer('latest_ckpt',  0,                       """Latest checkpoint timestamp to load""")
 tf.app.flags.DEFINE_boolean('is_train',     True,                    """False for generating only""")
 tf.app.flags.DEFINE_boolean('is_grayscale', False,                   """True for grayscale images""")
@@ -85,8 +85,17 @@ def main(_):
                 d_saver.restore(sess, d_checkpoint_restore_path)
 
             # setup for monitoring
+            if not os.path.exists(FLAGS.images_dir):
+                os.makedirs(FLAGS.images_dir)
+            if not os.path.exists(FLAGS.log_dir):
+                os.makedirs(FLAGS.log_dir)
+
             sample_z = sess.run(tf.random_uniform([dcgan.batch_size, dcgan.z_dim], minval=-1.0, maxval=1.0))
             images = dcgan.sample_images(5, 5, inputs=sample_z)
+
+            filename = os.path.join(FLAGS.images_dir, '000000.jpg')
+            with open(filename, 'wb') as f:
+                f.write(sess.run(images))
 
             tf.train.start_queue_runners(sess=sess)
 
@@ -96,17 +105,11 @@ def main(_):
                 duration = time.time() - start_time
                 print('step: %d, loss: (G: %.8f, D: %.8f), time taken: %.3f' % (itr, g_loss, d_loss, duration))
 
-                if itr % 100 == 0:
-                    if not os.path.exists(FLAGS.images_dir):
-                        os.makedirs(FLAGS.images_dir)
-
+                if itr % 5000 == 0:
                     # Images generated
-                    filename = os.path.join(FLAGS.images_dir, '%05d.jpg' % itr)
+                    filename = os.path.join(FLAGS.images_dir, '%06d.jpg' % itr)
                     with open(filename, 'wb') as f:
                         f.write(sess.run(images))
-
-                    if not os.path.exists(FLAGS.log_dir):
-                        os.makedirs(FLAGS.log_dir)
 
                     # Summary
                     summary_str = sess.run(summary_op)
