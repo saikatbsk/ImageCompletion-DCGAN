@@ -141,8 +141,8 @@ def main(_):
                 print(masks.shape)
 
                 # Actual image (y)
-                data_root = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/aamir_khan/'
-                image_path = os.path.join(data_root, 'ANFFICSSNIUNXWINIPTSDUAK.jpg')
+                data_root = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/shahrukh_khan/'
+                image_path = os.path.join(data_root, 'KOULQSEPTKKMFUMCJUDQSRCX.jpg')
                 image = get_image(image_path, dcgan.image_size)
                 images = np.expand_dims(image, axis=0)
                 print(images.shape)
@@ -157,7 +157,7 @@ def main(_):
                 momentum = 0.9
                 lr = 0.01
 
-                for i in range(0, 1001):
+                for i in range(0, 10001):
                     fd = {dcgan.zhat: zhat, dcgan.mask: masks, dcgan.image: images}
                     run = [dcgan.complete_loss, dcgan.grad_complete_loss, dcgan.G]
                     loss, g, G_imgs = sess.run(run, feed_dict=fd)
