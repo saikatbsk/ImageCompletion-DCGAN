@@ -14,7 +14,7 @@ class Generator:
                 outputs = tf.layers.dense(inputs, self.depths[0] * self.s_size * self.s_size)
                 outputs = tf.reshape(outputs, [-1, self.s_size, self.s_size, self.depths[0]])
                 outputs = tf.nn.relu(tf.layers.batch_normalization(outputs, training=training), name='outputs')
-            # deconvolution (transpose of convolution) x 4
+            # transposed convolution x 4
             with tf.variable_scope('deconv1'):
                 outputs = tf.layers.conv2d_transpose(outputs, self.depths[1], [5, 5], strides=(2, 2), padding='SAME')
                 outputs = tf.nn.relu(tf.layers.batch_normalization(outputs, training=training), name='outputs')
@@ -32,7 +32,6 @@ class Generator:
         self.reuse = True
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='g')
         return outputs
-
 
 class Discriminator:
     def __init__(self, depths=[64, 128, 256, 512]):
@@ -66,7 +65,6 @@ class Discriminator:
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='d')
         return outputs
 
-
 class DCGAN:
     def __init__(self,
                  batch_size=128, s_size=4, z_dim=100,
@@ -78,6 +76,21 @@ class DCGAN:
         self.g = Generator(depths=g_depths, s_size=self.s_size)
         self.d = Discriminator(depths=d_depths)
         self.z = tf.random_uniform([self.batch_size, self.z_dim], minval=-1.0, maxval=1.0)
+
+        # Image completion
+        self.image_size = 96
+        self.image_shape = [self.image_size, self.image_size, 3]
+        self.mask = tf.placeholder(tf.float32, [None] + self.image_shape, name='mask')
+        self.image = tf.placeholder(tf.float32, [None] + self.image_shape, name='real_image')
+        self.zhat = tf.placeholder(tf.float32, [1, self.z_dim], name='zhat')
+        self.G = self.g(self.zhat, training=True)
+
+        self.contextual_loss = tf.reduce_sum(
+            tf.contrib.layers.flatten(
+                tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.image))), 1)
+        self.perceptual_loss = self.d(self.G, training=True)
+        self.complete_loss = self.contextual_loss + 0.1*self.perceptual_loss
+        self.grad_complete_loss = tf.gradients(self.complete_loss, self.zhat)
 
     def loss(self, traindata):
         """build models, calculate losses.

@@ -1,7 +1,9 @@
 import os
 import time
+import numpy as np
 import tensorflow as tf
 from dcgan import DCGAN
+from utils import *
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('log_dir',       'checkpoints',           """Path to write logs and checkpoints""")
@@ -10,6 +12,7 @@ tf.app.flags.DEFINE_string('data_dir',      'data',                  """Path to 
 tf.app.flags.DEFINE_integer('max_itr',      100001,                  """Maximum number of iterations""")
 tf.app.flags.DEFINE_integer('latest_ckpt',  0,                       """Latest checkpoint timestamp to load""")
 tf.app.flags.DEFINE_boolean('is_train',     True,                    """False for generating only""")
+tf.app.flags.DEFINE_boolean('is_complete',  False,                   """True for completion only""")
 tf.app.flags.DEFINE_boolean('is_grayscale', False,                   """True for grayscale images""")
 tf.app.flags.DEFINE_integer('num_examples_per_epoch_for_train', 300, """number of examples for train""")
 
@@ -76,7 +79,7 @@ def main(_):
                 print(' ' + v.name)
             g_saver.restore(sess, g_checkpoint_restore_path)
 
-        if FLAGS.is_train:
+        if FLAGS.is_train and not FLAGS.is_complete:
             # restore or initialize discriminator
             if os.path.exists(d_checkpoint_restore_path+'.meta'):
                 print('Restoring variables:')
@@ -118,6 +121,61 @@ def main(_):
                     # Checkpoints
                     g_saver.save(sess, g_checkpoint_path, global_step=itr)
                     d_saver.save(sess, d_checkpoint_path, global_step=itr)
+
+        elif FLAGS.is_complete:
+            # restore discriminator
+            if os.path.exists(d_checkpoint_restore_path+'.meta'):
+                print('Restoring variables:')
+                for v in dcgan.d.variables:
+                    print(' ' + v.name)
+                d_saver.restore(sess, d_checkpoint_restore_path)
+
+                # Mask (M)
+                scale = 0.25
+                mask = np.ones(dcgan.image_shape)
+                sz = dcgan.image_size
+                l = int(dcgan.image_size*scale)
+                u = int(dcgan.image_size*(1.0-scale))
+                mask[l:u, l:u, :] = 0.0
+                masks = np.expand_dims(mask, axis=0)
+                print(masks.shape)
+
+                # Actual image (y)
+                data_root = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/aamir_khan/'
+                image_path = os.path.join(data_root, 'ANFFICSSNIUNXWINIPTSDUAK.jpg')
+                image = get_image(image_path, dcgan.image_size)
+                images = np.expand_dims(image, axis=0)
+                print(images.shape)
+
+                # Save corrupted image (y . M)
+                save_path = 'images/corrupted_image.jpg'
+                masked_image = np.multiply(image, mask)
+                imsave(masked_image, save_path)
+
+                zhat = np.random.uniform(-1, 1, size=(1, dcgan.z_dim))
+                v = 0
+                momentum = 0.9
+                lr = 0.01
+
+                for i in range(0, 1001):
+                    fd = {dcgan.zhat: zhat, dcgan.mask: masks, dcgan.image: images}
+                    run = [dcgan.complete_loss, dcgan.grad_complete_loss, dcgan.G]
+                    loss, g, G_imgs = sess.run(run, feed_dict=fd)
+
+                    v_prev = np.copy(v)
+                    v = momentum*v - lr*g[0]
+                    zhat += -momentum * v_prev + (1+momentum)*v
+                    zhat = np.clip(zhat, -1, 1)
+
+                    if i % 50 == 0:
+                        imgName = os.path.join('images', 'hats_img_{:04d}.jpg'.format(i))
+                        save_images(G_imgs[0,:,:,:], imgName)
+
+                        inv_masked_hat_image = np.multiply(G_imgs, 1.0-masks)
+                        completed = masked_image + inv_masked_hat_image
+                        imgName = os.path.join('images', 'completed_{:04d}.jpg'.format(i))
+                        save_images(completed[0,:,:,:], imgName)
+
         else:
             generated = sess.run(dcgan.sample_images(5, 5))
 
