@@ -1,4 +1,4 @@
-### Image Completion using Deep Convolutional Generative Adversarial Network (DCGAN)
+### Image Completion using Deep Convolutional Generative Adversarial Network
 
 [Incomplete]
 
