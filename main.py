@@ -2,6 +2,7 @@ import os
 import time
 import numpy as np
 import tensorflow as tf
+from glob import glob
 from dcgan import DCGAN
 from utils import *
 
@@ -9,6 +10,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('data_dir',      'data',                  """Path to tfrecords data directory""")
 tf.app.flags.DEFINE_string('log_dir',       'checkpoints',           """Path to write logs and checkpoints""")
 tf.app.flags.DEFINE_string('images_dir',    'images',                """Path to save generated images""")
+tf.app.flags.DEFINE_string('complete_src',  'complete_src',          """Path to images for completion""")
 tf.app.flags.DEFINE_string('complete_dir',  'complete',              """Path to save completed images""")
 tf.app.flags.DEFINE_integer('max_itr',      100001,                  """Maximum number of iterations""")
 tf.app.flags.DEFINE_integer('latest_ckpt',  0,                       """Latest checkpoint timestamp to load""")
@@ -145,9 +147,7 @@ def main(_):
                 masks = np.expand_dims(mask, axis=0)
 
                 # Read actual images
-                root_dir = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/'
-                images = [os.path.join(root_dir, 'aamir_khan', 'ANFFICSSNIUNXWINIPTSDUAK.jpg'),
-                          os.path.join(root_dir, 'akshay_kumar', 'BUTEWRQYAKMOCQBNRMPFQJCJ.jpg')]
+                images = glob(os.path.join(FLAGS.complete_src, '*.jpg'))
 
                 for idx in range(len(images)):
                     image_src = get_image(images[idx], dcgan.image_size)

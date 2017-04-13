@@ -22,8 +22,8 @@ python3 main.py
 # Generate
 python3 main.py --nois_train --latest_ckpt 100000
 
-# Complete: the input image path is still hard coded. I'll fix that.
-python3 main.py --is_complete --latest_ckpt 100000
+# Complete
+python3 main.py --is_complete --latest_ckpt 100000 --complete_src /path/to/images
 ```
 
 *Run on floydhub:*
