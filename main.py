@@ -6,9 +6,10 @@ from dcgan import DCGAN
 from utils import *
 
 FLAGS = tf.app.flags.FLAGS
+tf.app.flags.DEFINE_string('data_dir',      'data',                  """Path to tfrecords data directory""")
 tf.app.flags.DEFINE_string('log_dir',       'checkpoints',           """Path to write logs and checkpoints""")
 tf.app.flags.DEFINE_string('images_dir',    'images',                """Path to save generated images""")
-tf.app.flags.DEFINE_string('data_dir',      'data',                  """Path to data directory""")
+tf.app.flags.DEFINE_string('complete_dir',  'complete',              """Path to save completed images""")
 tf.app.flags.DEFINE_integer('max_itr',      100001,                  """Maximum number of iterations""")
 tf.app.flags.DEFINE_integer('latest_ckpt',  0,                       """Latest checkpoint timestamp to load""")
 tf.app.flags.DEFINE_boolean('is_train',     True,                    """False for generating only""")
@@ -130,7 +131,11 @@ def main(_):
                     print(' ' + v.name)
                 d_saver.restore(sess, d_checkpoint_restore_path)
 
-                # Mask (M)
+                # Directory to save completed images
+                if not os.path.exists(FLAGS.complete_dir):
+                    os.makedirs(FLAGS.complete_dir)
+
+                # Create mask
                 scale = 0.25
                 mask = np.ones(dcgan.image_shape)
                 sz = dcgan.image_size
@@ -138,46 +143,53 @@ def main(_):
                 u = int(dcgan.image_size*(1.0-scale))
                 mask[l:u, l:u, :] = 0.0
                 masks = np.expand_dims(mask, axis=0)
-                print(masks.shape)
 
-                # Actual image (y)
-                data_root = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/shahrukh_khan/'
-                image_path = os.path.join(data_root, 'KOULQSEPTKKMFUMCJUDQSRCX.jpg')
-                image = get_image(image_path, dcgan.image_size)
-                images = np.expand_dims(image, axis=0)
-                print(images.shape)
+                # Read actual images
+                root_dir = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/'
+                images = [os.path.join(root_dir, 'aamir_khan', 'ANFFICSSNIUNXWINIPTSDUAK.jpg'),
+                          os.path.join(root_dir, 'akshay_kumar', 'BUTEWRQYAKMOCQBNRMPFQJCJ.jpg')]
 
-                # Save corrupted image (y . M)
-                save_path = 'images/corrupted_image.jpg'
-                masked_image = np.multiply(image, mask)
-                imsave(masked_image, save_path)
+                for idx in range(len(images)):
+                    image_src = get_image(images[idx], dcgan.image_size)
+                    image = np.expand_dims(image_src, axis=0)
 
-                zhat = np.random.uniform(-1, 1, size=(1, dcgan.z_dim))
-                v = 0
-                momentum = 0.9
-                lr = 0.01
+                    # Save image after crop (y)
+                    orig_fn = os.path.join(FLAGS.complete_dir, 'original_image_{:02d}.jpg'.format(idx))
+                    imsave(image_src, orig_fn)
 
-                for i in range(0, 10001):
-                    fd = {dcgan.zhat: zhat, dcgan.mask: masks, dcgan.image: images}
-                    run = [dcgan.complete_loss, dcgan.grad_complete_loss, dcgan.G]
-                    loss, g, G_imgs = sess.run(run, feed_dict=fd)
+                    # Save corrupted image (y . M)
+                    corrupted_fn = os.path.join(FLAGS.complete_dir, 'corrupted_image_{:02d}.jpg'.format(idx))
+                    masked_image = np.multiply(image_src, mask)
+                    imsave(masked_image, corrupted_fn)
 
-                    v_prev = np.copy(v)
-                    v = momentum*v - lr*g[0]
-                    zhat += -momentum * v_prev + (1+momentum)*v
-                    zhat = np.clip(zhat, -1, 1)
+                    zhat = np.random.uniform(-1, 1, size=(1, dcgan.z_dim))
+                    v = 0
+                    momentum = 0.9
+                    lr = 0.01
 
-                    if i % 50 == 0:
-                        imgName = os.path.join('images', 'hats_img_{:04d}.jpg'.format(i))
-                        save_images(G_imgs[0,:,:,:], imgName)
+                    for i in range(0, 10001):
+                        fd = {dcgan.zhat: zhat, dcgan.mask: masks, dcgan.image: image}
+                        run = [dcgan.complete_loss, dcgan.grad_complete_loss, dcgan.G]
+                        loss, g, G_imgs = sess.run(run, feed_dict=fd)
 
-                        inv_masked_hat_image = np.multiply(G_imgs, 1.0-masks)
-                        completed = masked_image + inv_masked_hat_image
-                        imgName = os.path.join('images', 'completed_{:04d}.jpg'.format(i))
-                        save_images(completed[0,:,:,:], imgName)
+                        v_prev = np.copy(v)
+                        v = momentum*v - lr*g[0]
+                        zhat += -momentum * v_prev + (1+momentum)*v
+                        zhat = np.clip(zhat, -1, 1)
+
+                        if i % 50 == 0:
+                            hats_fn = os.path.join(FLAGS.complete_dir,
+                                'hats_img_{:02d}_{:04d}.jpg'.format(idx, i))
+                            save_images(G_imgs[0, :, :, :], hats_fn)
+
+                            inv_masked_hat_image = np.multiply(G_imgs, 1.0-masks)
+                            completed = masked_image + inv_masked_hat_image
+                            complete_fn = os.path.join(FLAGS.complete_dir,
+                                'completed_{:02d}_{:04d}.jpg'.format(idx, i))
+                            save_images(completed[0, :, :, :], complete_fn)
 
         else:
-            generated = sess.run(dcgan.sample_images(5, 5))
+            generated = sess.run(dcgan.sample_images(8, 8))
 
             if not os.path.exists(FLAGS.images_dir):
                 os.makedirs(FLAGS.images_dir)
