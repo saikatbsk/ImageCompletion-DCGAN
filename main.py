@@ -177,7 +177,7 @@ def main(_):
                         zhat += -momentum * v_prev + (1+momentum)*v
                         zhat = np.clip(zhat, -1, 1)
 
-                        if i % 50 == 0:
+                        if i % 100 == 0:
                             hats_fn = os.path.join(FLAGS.complete_dir,
                                 'hats_img_{:02d}_{:04d}.jpg'.format(idx, i))
                             save_images(G_imgs[0, :, :, :], hats_fn)
