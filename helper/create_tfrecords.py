@@ -9,10 +9,10 @@ def _bytes_feature(value):
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-root = '/home/saikat/Workspace/Datasets/Indian_Celebrities_Face_Dataset/without_glasses/'
+root = '/home/saikat/Workspace/Datasets/'
 
-image_files = glob(os.path.join(root, 'shahrukh_khan', '*.jpg'))
-tfrecords_filename = '../data/shahrukh_khan.tfrecords'
+image_files = glob(os.path.join(root, 'Pokemon', '*.jpg'))
+tfrecords_filename = '../data/pokemon/pokemon.tfrecords'
 
 writer = tf.python_io.TFRecordWriter(tfrecords_filename)
 
