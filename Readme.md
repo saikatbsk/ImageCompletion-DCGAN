@@ -12,6 +12,10 @@ I will be adding some documentation on image completion. Meanwhile, here's some 
 
 ![image_completion_results](images/indian_celebs/completion.png)
 
+I also tried generating Pokémon images:
+
+![pokemon_generation_results](images/pokemon/generated_image_small.jpg)
+
 *Setup and run:*
 
 ```
@@ -40,5 +44,5 @@ git clone https://github.com/saikatbsk/ImageCompletion-DCGAN
 cd ImageCompletion-DCGAN
 
 ~/.local/bin/floyd init ImageCompletion-DCGAN
-~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output"
+    ~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output"
 ```
