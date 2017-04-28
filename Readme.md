@@ -18,7 +18,7 @@ I also tried generating Pokémon images:
 
 *Setup and run:*
 
-```
+```bash
 pip3 install --user tensorflow
 
 git clone https://github.com/saikatbsk/ImageCompletion-DCGAN
@@ -36,7 +36,7 @@ python3 main.py --is_complete --latest_ckpt 50000 --complete_src /path/to/images
 
 *Run on floydhub:*
 
-```
+```bash
 pip3 install --user floyd-cli
 ~/.local/bin/floyd login
 
@@ -44,5 +44,5 @@ git clone https://github.com/saikatbsk/ImageCompletion-DCGAN
 cd ImageCompletion-DCGAN
 
 ~/.local/bin/floyd init ImageCompletion-DCGAN
-    ~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output"
+~/.local/bin/floyd run --gpu --env tensorflow-1.0 "python main.py --log_dir /output --images_dir /output"
 ```
