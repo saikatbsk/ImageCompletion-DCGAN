@@ -12,7 +12,9 @@ tf.app.flags.DEFINE_string('log_dir',       'checkpoints',           """Path to 
 tf.app.flags.DEFINE_string('images_dir',    'images',                """Path to save generated images""")
 tf.app.flags.DEFINE_string('complete_src',  'complete_src',          """Path to images for completion""")
 tf.app.flags.DEFINE_string('complete_dir',  'complete',              """Path to save completed images""")
+tf.app.flags.DEFINE_string('masktype',      'center',                """Mask types: center, random""")
 tf.app.flags.DEFINE_integer('max_itr',      100001,                  """Maximum number of iterations""")
+tf.app.flags.DEFINE_integer('batch_size',   128,                     """Batch size""")
 tf.app.flags.DEFINE_integer('latest_ckpt',  0,                       """Latest checkpoint timestamp to load""")
 tf.app.flags.DEFINE_boolean('is_train',     True,                    """False for generating only""")
 tf.app.flags.DEFINE_boolean('is_complete',  False,                   """True for completion only""")
@@ -21,8 +23,8 @@ tf.app.flags.DEFINE_integer('num_examples_per_epoch_for_train', 300, """number o
 
 CROP_IMAGE_SIZE = 96
 
-def read_decode(batch_size, s_size):
-    files = [os.path.join(FLAGS.data_dir, f) for f in os.listdir(FLAGS.data_dir) if f.endswith('.tfrecords')]
+def read_decode(data_dir, batch_size, s_size):
+    files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.tfrecords')]
     fqueue = tf.train.string_input_producer(files)
     reader = tf.TFRecordReader()
     _, serialized = reader.read(fqueue)
@@ -49,8 +51,8 @@ def read_decode(batch_size, s_size):
     return tf.subtract(tf.div(tf.image.resize_images(images, [s_size * 2 ** 4, s_size * 2 ** 4]), 127.5), 1.0)
 
 def main(_):
-    dcgan = DCGAN(s_size=6)
-    traindata = read_decode(dcgan.batch_size, dcgan.s_size)
+    dcgan = DCGAN(batch_size=FLAGS.batch_size, s_size=6)
+    traindata = read_decode(FLAGS.data_dir, dcgan.batch_size, dcgan.s_size)
     losses = dcgan.loss(traindata)
 
     # feature matching
@@ -138,29 +140,34 @@ def main(_):
                     os.makedirs(FLAGS.complete_dir)
 
                 # Create mask
-                scale = 0.25
-                mask = np.ones(dcgan.image_shape)
-                sz = dcgan.image_size
-                l = int(dcgan.image_size*scale)
-                u = int(dcgan.image_size*(1.0-scale))
-                mask[l:u, l:u, :] = 0.0
-                masks = np.expand_dims(mask, axis=0)
+                if FLAGS.masktype == 'center':
+                    scale = 0.25
+                    mask = np.ones(dcgan.image_shape)
+                    sz = dcgan.image_size
+                    l = int(dcgan.image_size*scale)
+                    u = int(dcgan.image_size*(1.0-scale))
+                    mask[l:u, l:u, :] = 0.0
+                if FLAGS.masktype == 'random':
+                    fraction_masked = 0.6
+                    mask = np.ones(dcgan.image_shape)
+                    mask[np.random.random(dcgan.image_shape[:2]) < fraction_masked] = 0.0
 
                 # Read actual images
-                images = glob(os.path.join(FLAGS.complete_src, '*.jpg'))
+                originals = glob(os.path.join(FLAGS.complete_src, '*.jpg'))
+                batch_mask = np.expand_dims(mask, axis=0)
 
-                for idx in range(len(images)):
-                    image_src = get_image(images[idx], dcgan.image_size)
+                for idx in range(len(originals)):
+                    image_src = get_image(originals[idx], dcgan.image_size)
                     image = np.expand_dims(image_src, axis=0)
 
-                    # Save image after crop (y)
-                    orig_fn = os.path.join(FLAGS.complete_dir, 'original_image_{:02d}.jpg'.format(idx))
-                    imsave(image_src, orig_fn)
+                    # Save original image (y)
+                    filename = os.path.join(FLAGS.complete_dir, 'original_image_{:02d}.jpg'.format(idx))
+                    imsave(image_src, filename)
 
                     # Save corrupted image (y . M)
-                    corrupted_fn = os.path.join(FLAGS.complete_dir, 'corrupted_image_{:02d}.jpg'.format(idx))
+                    filename = os.path.join(FLAGS.complete_dir, 'corrupted_image_{:02d}.jpg'.format(idx))
                     masked_image = np.multiply(image_src, mask)
-                    imsave(masked_image, corrupted_fn)
+                    imsave(masked_image, filename)
 
                     zhat = np.random.uniform(-1, 1, size=(1, dcgan.z_dim))
                     v = 0
@@ -168,7 +175,7 @@ def main(_):
                     lr = 0.01
 
                     for i in range(0, 10001):
-                        fd = {dcgan.zhat: zhat, dcgan.mask: masks, dcgan.image: image}
+                        fd = {dcgan.zhat: zhat, dcgan.mask: batch_mask, dcgan.image: image}
                         run = [dcgan.complete_loss, dcgan.grad_complete_loss, dcgan.G]
                         loss, g, G_imgs = sess.run(run, feed_dict=fd)
 
@@ -178,15 +185,15 @@ def main(_):
                         zhat = np.clip(zhat, -1, 1)
 
                         if i % 100 == 0:
-                            hats_fn = os.path.join(FLAGS.complete_dir,
+                            filename = os.path.join(FLAGS.complete_dir,
                                 'hats_img_{:02d}_{:04d}.jpg'.format(idx, i))
-                            save_images(G_imgs[0, :, :, :], hats_fn)
+                            save_images(G_imgs[0, :, :, :], filename)
 
-                            inv_masked_hat_image = np.multiply(G_imgs, 1.0-masks)
+                            inv_masked_hat_image = np.multiply(G_imgs, 1.0-batch_mask)
                             completed = masked_image + inv_masked_hat_image
-                            complete_fn = os.path.join(FLAGS.complete_dir,
+                            filename = os.path.join(FLAGS.complete_dir,
                                 'completed_{:02d}_{:04d}.jpg'.format(idx, i))
-                            save_images(completed[0, :, :, :], complete_fn)
+                            save_images(completed[0, :, :, :], filename)
 
         else:
             generated = sess.run(dcgan.sample_images(8, 8))
