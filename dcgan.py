@@ -1,8 +1,8 @@
 import tensorflow as tf
 
 class Generator:
-    def __init__(self, depths=[1024, 512, 256, 128], s_size=4):
-        self.depths = depths + [3]
+    def __init__(self, depths=[1024, 512, 256, 128], s_size=4, nb_channels=3):
+        self.depths = depths + [nb_channels]
         self.s_size = s_size
         self.reuse = False
 
@@ -34,8 +34,8 @@ class Generator:
         return outputs
 
 class Discriminator:
-    def __init__(self, depths=[64, 128, 256, 512]):
-        self.depths = [3] + depths
+    def __init__(self, depths=[64, 128, 256, 512], nb_channels=3):
+        self.depths = [nb_channels] + depths
         self.reuse = False
 
     def __call__(self, inputs, training=False, name=''):
@@ -67,19 +67,19 @@ class Discriminator:
 
 class DCGAN:
     def __init__(self,
-                 batch_size=128, s_size=4, z_dim=100,
+                 batch_size=128, s_size=4, z_dim=100, nb_channels=3,
                  g_depths=[1024, 512, 256, 128],
                  d_depths=[64, 128, 256, 512]):
         self.batch_size = batch_size
         self.s_size = s_size
         self.z_dim = z_dim
-        self.g = Generator(depths=g_depths, s_size=self.s_size)
-        self.d = Discriminator(depths=d_depths)
+        self.g = Generator(depths=g_depths, s_size=self.s_size, nb_channels=nb_channels)
+        self.d = Discriminator(depths=d_depths, nb_channels=nb_channels)
         self.z = tf.random_uniform([self.batch_size, self.z_dim], minval=-1.0, maxval=1.0)
 
         # Image completion
         self.image_size = 96
-        self.image_shape = [self.image_size, self.image_size, 3]
+        self.image_shape = [self.image_size, self.image_size, nb_channels]
         self.mask = tf.placeholder(tf.float32, [None] + self.image_shape, name='mask')
         self.image = tf.placeholder(tf.float32, [None] + self.image_shape, name='real_image')
         self.zhat = tf.placeholder(tf.float32, [1, self.z_dim], name='zhat')
@@ -87,9 +87,9 @@ class DCGAN:
 
         self.contextual_loss = tf.reduce_sum(
             tf.contrib.layers.flatten(
-                tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.image))), 1)
-        self.perceptual_loss = self.d(self.G, training=True)
-        self.complete_loss = self.contextual_loss + 0.1*self.perceptual_loss
+                tf.square(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.image))), 1)
+        self.adversarial_loss = self.d(self.G, training=False)
+        self.complete_loss = (0.999)*self.contextual_loss + (0.001)*self.adversarial_loss
         self.grad_complete_loss = tf.gradients(self.complete_loss, self.zhat)
 
     def loss(self, traindata):

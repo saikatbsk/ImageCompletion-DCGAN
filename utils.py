@@ -1,11 +1,14 @@
 import scipy.misc
 import numpy as np
 
-def get_image(image_path, image_size, is_crop=True):
-    return transform(imread(image_path), image_size, is_crop)
+def get_image(image_path, image_size, nb_channels=3, is_crop=True):
+    return transform(imread(image_path, nb_channels), image_size, is_crop)
 
-def imread(path):
-    return scipy.misc.imread(path, mode='RGB').astype(np.float)
+def imread(path, nb_channels):
+    if nb_channels == 3:
+        return scipy.misc.imread(path, mode='RGB').astype(np.float)
+    elif nb_channels == 1:
+        return scipy.misc.imread(path, mode='L').astype(np.float)
 
 def transform(image, npx=96, is_crop=True):
     # npx : # of pixels width/height of image
